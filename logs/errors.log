@@ -1,0 +1,26 @@
+ERROR <PID 5160:MainProcess> airflowpipeline.__init__(): Fatal Error: Unable to connect with Cassandra cluster
+Traceback (most recent call last):
+  File "G:/ML/AllMaterials/AirFlow-Dags/airflow_pipeline/airflowPipeline/pipeline/myKafkaCassandra.py", line 30, in __init__
+    self.session = cluster.connect()
+  File "cassandra\cluster.py", line 1667, in cassandra.cluster.Cluster.connect
+  File "cassandra\cluster.py", line 1703, in cassandra.cluster.Cluster.connect
+  File "cassandra\cluster.py", line 1690, in cassandra.cluster.Cluster.connect
+  File "cassandra\cluster.py", line 3488, in cassandra.cluster.ControlConnection.connect
+  File "cassandra\cluster.py", line 3533, in cassandra.cluster.ControlConnection._reconnect_internal
+cassandra.cluster.NoHostAvailable: ('Unable to connect to any servers', {'192.168.1.107:9042': OSError(None, "Tried connecting to [('192.168.1.107', 9042)]. Last error: timed out")})
+ERROR <PID 5160:MainProcess> airflowpipeline.kafka_consumer(): Kafka Broker not Reachable
+Traceback (most recent call last):
+  File "G:/ML/AllMaterials/AirFlow-Dags/airflow_pipeline/airflowPipeline/pipeline/myKafkaCassandra.py", line 65, in kafka_consumer
+    self.consumer1 = KafkaConsumer(
+  File "C:\Python38\lib\site-packages\kafka\consumer\group.py", line 356, in __init__
+    self._client = KafkaClient(metrics=self._metrics, **self.config)
+  File "C:\Python38\lib\site-packages\kafka\client_async.py", line 244, in __init__
+    self.config['api_version'] = self.check_version(timeout=check_timeout)
+  File "C:\Python38\lib\site-packages\kafka\client_async.py", line 927, in check_version
+    raise Errors.NoBrokersAvailable()
+kafka.errors.NoBrokersAvailable: NoBrokersAvailable
+ERROR <PID 5160:MainProcess> airflowpipeline.stream_to_cassandra(): Kafka Consumer Error
+Traceback (most recent call last):
+  File "G:/ML/AllMaterials/AirFlow-Dags/airflow_pipeline/airflowPipeline/pipeline/myKafkaCassandra.py", line 85, in stream_to_cassandra
+    for msg in self.consumer1:
+AttributeError: 'CassandraStorage' object has no attribute 'consumer1'
