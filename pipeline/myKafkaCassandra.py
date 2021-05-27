@@ -115,7 +115,7 @@ def main_realtime(symbol='RTR',tick=True):
     try:
         database.stream_to_cassandra()
     except Exception:
-        logger.error("Kafka Consumer or Cassandra connection Failed",exc_info=True)
+        logger.error("Kafka Consumer or Cassandra connection Error",exc_info=True)
 
 
 
