@@ -1,9 +1,10 @@
 import ast
-import time
 from util.util import string_to_float,symbol_list
 from util.config import config
 from kafka import KafkaConsumer
 from cassandra.cluster import Cluster,NoHostAvailable
+from airflowPipeline.pipeline.yamlLogger import setup_logging
+import logging
 
 class CassandraStorage(object):
 
@@ -23,10 +24,12 @@ class CassandraStorage(object):
         cluster = Cluster([config['cassandraHost']])
 
         # start Cassandra server before connecting
+        self.logger = logging.getLogger('airflowpipeline')
         try:
             self.session = cluster.connect()
+            self.logger.info("Connected to Cassandra Cluster")
         except NoHostAvailable:
-            print("Fatal Error: need to connect Cassandra server")
+            self.logger.error("Fatal Error: Unable to connect with Cassandra cluster",exc_info=True)
         else:
             self.create_table()
 
@@ -57,38 +60,44 @@ class CassandraStorage(object):
     # initialize a Kafka consumer
     def kafka_consumer(self):
 
-        self.consumer1 = KafkaConsumer(
-            config['topic_name1'],
-            bootstrap_servers=config['kafka_broker'])
-        self.consumer2 = KafkaConsumer(
-            config['topic_name2'],
-            bootstrap_servers=config['kafka_broker'])
+        try:
+            self.consumer1 = KafkaConsumer(
+                config['topic_name1'],
+                bootstrap_servers=config['kafka_broker'])
+            self.consumer2 = KafkaConsumer(
+                config['topic_name2'],
+                bootstrap_servers=config['kafka_broker'])
 
-        self.consumer3 = KafkaConsumer(
-            'news',
-            bootstrap_servers=config['kafka_broker'])
+            self.consumer3 = KafkaConsumer(
+                'news',
+                bootstrap_servers=config['kafka_broker'])
+        except Exception:
+            self.logger.error("Kafka Broker not Reachable",exc_info=True)
 
 
         # store streaming data of 1min frequency to Cassandra database
 
     def stream_to_cassandra(self):
 
+        try:
 
-        for msg in self.consumer1:
-            # decode msg value from byte to utf-8
-            dict_data=ast.literal_eval(msg.value.decode("utf-8"))
+            for msg in self.consumer1:
+                # decode msg value from byte to utf-8
+                dict_data=ast.literal_eval(msg.value.decode("utf-8"))
 
-            # transform price data from string to float
-            for key in ['open', 'high', 'low', 'close', 'volume']:
-                dict_data[key]=string_to_float(dict_data[key])
+                # transform price data from string to float
+                for key in ['open', 'high', 'low', 'close', 'volume']:
+                    dict_data[key]=string_to_float(dict_data[key])
 
-            query="INSERT INTO {}(time, symbol,open,high,low,close,volume) VALUES ('{}','{}',{},{},{},{},{});".format(self.symbol, dict_data['time'],
-                                                                                                                      dict_data['symbol'],dict_data['open'], \
-                                                                                                                      dict_data['high'],dict_data['low'],dict_data['close'],dict_data['volume'])
+                query="INSERT INTO {}(time, symbol,open,high,low,close,volume) VALUES ('{}','{}',{},{},{},{},{});".format(self.symbol, dict_data['time'],
+                                                                                                                          dict_data['symbol'],dict_data['open'],
+                                                                                                                          dict_data['high'],dict_data['low'],dict_data['close'],dict_data['volume'])
 
 
-            self.session.execute(query)
-            print("Stored {}\'s min data at {}".format(dict_data['symbol'],dict_data['time']))
+                self.session.execute(query)
+                self.logger.info("Stored {}\'s min data at {}".format(dict_data['symbol'],dict_data['time']))
+        except Exception:
+            self.logger.error("Kafka Consumer Error",exc_info=True)
 
 
 
@@ -97,16 +106,17 @@ class CassandraStorage(object):
 
 
 def main_realtime(symbol='RTR',tick=True):
-
+    setup_logging()
+    # logger = logging.getLogger('airflowpipeline')
     database=CassandraStorage(symbol)
     database.kafka_consumer()
+    logger = database.logger
 
     try:
         database.stream_to_cassandra()
-    except NoHostAvailable:
-        print("Error:Cassandra Host not Available")
-    finally:
-        database.session.shutdown()
+    except Exception:
+        logger.error("Kafka Consumer or Cassandra connection Failed",exc_info=True)
+
 
 
 if __name__ == '__main__':

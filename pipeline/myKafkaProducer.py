@@ -1,9 +1,12 @@
 import numpy as np
 import datetime
-from pytz import timezone
-from util.config import config,myTimeZone
+from util.config import config
+from airflowPipeline.pipeline.yamlLogger import setup_logging
+import logging
 from kafka import KafkaProducer
 import schedule
+
+
 
 def stock_fake(producer,symbol):
     close=4000
@@ -19,15 +22,30 @@ def stock_fake(producer,symbol):
     producer.send(topic=config['topic_name1'], value=bytes(str(value), 'utf-8'))
     producer.flush()
 
+
+
+
 def run_producer():
-    producer = KafkaProducer(bootstrap_servers=config['kafka_broker'])
+    setup_logging()
+    logger = logging.getLogger('airflowpipeline')
+    logger.info("Starting Kafka Producer")
+    try:
+        producer = KafkaProducer(bootstrap_servers=config['kafka_broker'])
+        schedule.every(10).seconds.do(stock_fake,producer,'RTR')
+        logger.info(f"Sending Stock data to Kafka ... ")
+        producer.flush()
+        while True:
+            schedule.run_pending()
+    except Exception as e:
+        logger.error("Stocks Kafka Producer Failed",exc_info=True)
 
-    schedule.every(10).seconds.do(stock_fake,producer,'RTR')
-    print("Sending Data....")
 
-    while True:
-        schedule.run_pending()
+
+
+
+
 
 if __name__ == '__main__':
+
     run_producer()
 
